@@ -649,6 +649,9 @@ body{min-height:100%}
     <label class="secsub" for="kbIn">Мои гири, кг (через запятую)</label>
     <div class="kbrow"><input id="kbIn" type="text" inputmode="decimal" placeholder="16"><button type="button" class="btn" id="kbSave">Сохранить</button></div>
     <p class="secsub" id="kbMsg">Упражнения с гирей берут вес только из этого списка.</p>
+    <label class="secsub" for="barIn">Гриф и блины, кг (для подсказки «что вешать»)</label>
+    <div class="kbrow"><input id="barIn" type="text" inputmode="decimal" placeholder="20" style="flex:0 0 72px" aria-label="Вес грифа"><input id="platesIn" type="text" inputmode="decimal" placeholder="25, 20, 15, 10, 5, 2.5, 1.25" aria-label="Блины"><button type="button" class="btn" id="barSave">Сохранить</button></div>
+    <p class="secsub" id="barMsg">Блины — по одному числу на вес, которые есть в зале парами.</p>
     <p class="secsub">Скоро здесь: время отдыха для каждого упражнения и шкала разминки.</p>
     <div id="localData" hidden>
       <h2>Резервная копия</h2>
@@ -1023,6 +1026,17 @@ const VARS={squat:[
 let vsel={};
 // гири пользователя: вес берётся из списка, а не шагом 2,5 кг
 let KB=[16];
+// штанга: гриф и набор блинов (пары) для калькулятора «что вешать на сторону»
+let BARW=20,PLATES=[25,20,15,10,5,2.5,1.25];
+const BARBELL=new Set(["bench","ohp","incline","hipthrust","bbrow","deadlift","rdl","cgbench","biceps"]);
+const isBarbell=ex=>BARBELL.has(ex.id)||ex.vk==="bb";
+function platesFor(W){
+  if(!(W>BARW))return W===BARW?"пустой гриф":null;
+  let side=(W-BARW)/2;const out=[];
+  for(const p of [...PLATES].sort((a,b)=>b-a)){while(side>=p-1e-9){out.push(p);side-=p}}
+  const txt=out.map(fN).join(" + ");
+  return side>1e-6?`${txt||"—"} (не хватает ${fN(side*2)} кг)`:txt;
+}
 const isKB=ex=>ex.equip==="гиря";
 function applyKB(ex){if(!isKB(ex))return ex;return {...ex,bw:false,kb:true,inc:4,warm:0,startW:ex.startW??KB[0]}}
 const placeGrp=pk=>pk==="homeeq"||pk==="homebw"||pk==="home"?"home":pk;
@@ -1365,7 +1379,7 @@ document.getElementById("kbSave").onclick=()=>{
   const m=document.getElementById("kbMsg");
   if(!v.length){m.textContent="Впиши вес гири, например 16 или 16, 24.";return}
   KB=[...new Set(v)].sort((a,b)=>a-b);document.getElementById("kbIn").value=KB.join(", ");
-  if(db)db.doc("settings/equip").set({kb:KB}).catch(()=>{});
+  if(db)db.doc("settings/equip").set({kb:KB,bar:BARW,plates:PLATES}).catch(()=>{});
   m.textContent="Сохранено. Упражнения с гирей берут вес только из этого списка.";
 };
 if(window.MF_LOCAL){
@@ -1375,7 +1389,17 @@ if(window.MF_LOCAL){
   document.getElementById("impBtn").onclick=()=>document.getElementById("impFile").click();
   document.getElementById("impFile").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;try{const n=await MF_LOCAL.importFile(f);lm(`Восстановлено записей: ${n}. Перезапускаю…`);setTimeout(()=>location.reload(),900)}catch(err){lm("Это не файл копии MonkFlow.")}};
 }
-function showSettings(){curPlace=null;curSection=null;document.getElementById("kbIn").value=KB.join(", ");renderSettings();showScreen("settings");window.scrollTo(0,0)}
+document.getElementById("barSave").onclick=()=>{
+  const num=x=>parseFloat(String(x).replace(",","."));
+  const b=num(document.getElementById("barIn").value),pl=document.getElementById("platesIn").value.replace(/,\s+/g," ").split(/[;\s]+/).map(num).filter(x=>x>0&&x<100);
+  const m=document.getElementById("barMsg");
+  if(!(b>=0&&b<60)||!pl.length){m.textContent="Впиши вес грифа (например 20) и блины через запятую с пробелом: 25, 20, 10, 5, 2.5.";return}
+  BARW=b;PLATES=[...new Set(pl)].sort((a,c)=>c-a);
+  document.getElementById("barIn").value=fN(BARW);document.getElementById("platesIn").value=PLATES.map(fN).join(", ");
+  if(db)db.doc("settings/equip").set({kb:KB,bar:BARW,plates:PLATES}).catch(()=>{});
+  m.textContent="Сохранено.";
+};
+function showSettings(){curPlace=null;curSection=null;document.getElementById("kbIn").value=KB.join(", ");document.getElementById("barIn").value=fN(BARW);document.getElementById("platesIn").value=PLATES.map(fN).join(", ");renderSettings();showScreen("settings");window.scrollTo(0,0)}
 document.getElementById("styleList").addEventListener("click",e=>{const b=e.target.closest("[data-sty]");if(!b||b.disabled)return;UI.style=b.dataset.sty;applyUI();saveUI();renderSettings()});
 document.getElementById("themeSeg").addEventListener("click",e=>{const b=e.target.closest("[data-th]");if(!b)return;UI.theme=b.dataset.th;applyUI();saveUI();renderSettings()});
 document.getElementById("setBack").onclick=showProfile;
@@ -2403,6 +2427,8 @@ list.addEventListener("input",e=>{
   if(kind==="w")s.w=Number.isFinite(v)?v:null; else s.r=Number.isFinite(v)?v:null;
   queueSave(700);
 });
+// вписал вес вручную — обновить подсказку «блины на сторону»
+list.addEventListener("change",e=>{const t=e.target;if(t.tagName==="INPUT"&&t.id.startsWith("w_"))render()});
 
 function render(){
   let dn=0;
@@ -2433,7 +2459,16 @@ function render(){
     }
     const li=document.getElementById("ex-"+ex.id);
     const wl=li.querySelector(".wline");
-    if(wl){const okR=ramp.length&&ramp.every(Boolean);wl.hidden=!okR;if(okR)wl.textContent=`Разминка: ${ramp.map(x=>`${fN(x.w)}×${x.r}`).join(" → ")}, затем ${fN(adv.w)} кг`}
+    if(wl){const okR=ramp.length&&ramp.every(Boolean),lines=[];
+      if(okR)lines.push(`Разминка: ${ramp.map(x=>`${fN(x.w)}×${x.r}`).join(" → ")}, затем ${fN(adv.w)} кг`);
+      if(isBarbell(ex)){
+        // вес первого рабочего подхода: что вписано сегодня, иначе подсказка
+        const w0=ex.warm||0,cw=sets[ex.id+"_"+w0]?.w,W=cw!=null?cw:adv?.w;
+        const ws=[...(okR?ramp.map(x=>x.w):[]),W].filter((v,i,a)=>v!=null&&a.indexOf(v)===i);
+        const pp=ws.map(v=>[v,platesFor(v)]).filter(x=>x[1]);
+        if(pp.length)lines.push(`Блины на сторону (гриф ${fN(BARW)}): `+pp.map(([v,t])=>`${fN(v)} кг — ${t}`).join(" · "));
+      }
+      wl.hidden=!lines.length;wl.textContent=lines.join("\n");wl.style.whiteSpace="pre-line"}
     const advEl=li.querySelector(".adv");
     advEl.hidden=!adv;if(adv){advEl.textContent=adv.t;advEl.classList.toggle("up",!!adv.up)}
     const eb=document.getElementById("e_"+ex.id);
@@ -2687,7 +2722,7 @@ if(PROGRAMS[startKey])openProgram(startKey);else if(PLACES[startKey])openPlace(s
     try{const lq=await db.collection("exercises").get();lq.docs.forEach(x=>libExtra[x.id]=x.data())}catch(e){}
     try{const u=await db.doc("settings/ui").get();if(u.exists){UI={...UI,...u.data()};applyUI()}}catch(e){}
     try{const o=await db.doc("settings/order").get();if(o.exists)ORD={...o.data()}}catch(e){}
-    try{const q=await db.doc("settings/equip").get();if(q.exists&&Array.isArray(q.data().kb)&&q.data().kb.length)KB=q.data().kb}catch(e){}
+    try{const q=await db.doc("settings/equip").get();if(q.exists){const v=q.data();if(Array.isArray(v.kb)&&v.kb.length)KB=v.kb;if(v.bar!=null)BARW=v.bar;if(Array.isArray(v.plates)&&v.plates.length)PLATES=v.plates}}catch(e){}
     try{const kq=await db.collection("skills").get();kq.docs.forEach(x=>{SKP[x.id]=x.data()});SKILLS.forEach(k=>skSync(k.id))}catch(e){}
     try{const r=await db.doc("settings/rotation").get();if(r.exists)ROT={...r.data()}}catch(e){}
     try{const w=await db.doc("settings/warmup").get();if(w.exists){const v=w.data();WU={...WU,...v,counts:{...(v.counts||{})}}}}catch(e){}
