@@ -36,7 +36,7 @@ page=f'''<!doctype html>
 </html>'''
 open('index.html','w').write(page)
 open('sw.js','w').write(open('src/sw.js').read().replace('__VERSION__',ver).replace('"seed.json"]','"seed.json",'+','.join(f'"{f}"' for f in FONTS)+']'))
-json.dump({"name":"MonkFlow","short_name":"MonkFlow","start_url":"./","scope":"./","display":"standalone","orientation":"portrait","background_color":"#16130f","theme_color":"#16130f","lang":"ru",
+json.dump({"name":"MonkFlow","short_name":"MonkFlow","start_url":"./","scope":"./","display":"standalone","orientation":"portrait","background_color":"#101010","theme_color":"#101010","lang":"ru",
   "icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png"},{"src":"icon-512.png","sizes":"512x512","type":"image/png"},{"src":"icon-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}]},open('manifest.webmanifest','w'),ensure_ascii=False)
 F='/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf'
 def icon(n,path):
