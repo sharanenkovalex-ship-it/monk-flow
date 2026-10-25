@@ -44,7 +44,11 @@ def icon(n,path):
     f=ImageFont.truetype(F,int(n*.5));b=d.textbbox((0,0),"M",font=f)
     d.text(((n-(b[2]-b[0]))/2-b[0],(n-(b[3]-b[1]))/2-b[1]),"M",font=f,fill='#ef8a2a')
     im.save(path)
-icon(192,'icon-192.png');icon(512,'icon-512.png');icon(180,'apple-touch-icon.png')
+if os.path.exists('src/icon-source.png'):
+    src_icon=Image.open('src/icon-source.png').convert('RGB')
+    for n,path in ((192,'icon-192.png'),(512,'icon-512.png'),(180,'apple-touch-icon.png')):src_icon.resize((n,n),Image.LANCZOS).save(path)
+else:
+    icon(192,'icon-192.png');icon(512,'icon-512.png');icon(180,'apple-touch-icon.png')
 print(ver,os.path.getsize('index.html'))
 
 shutil.copy('src/seed.json','seed.json')
