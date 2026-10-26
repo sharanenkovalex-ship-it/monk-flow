@@ -812,6 +812,12 @@ body{min-height:100%}
 .stx small{font-size:12px;color:var(--muted);line-height:1.35}
 .stm{font:600 12px var(--mono);color:var(--muted);text-align:right}
 .stycard.on .stm{color:var(--ink);font-size:18px}
+.hero{display:grid;gap:10px;padding:6px 0 4px}
+.hslogan{margin:0;font-family:var(--display,inherit);font-size:clamp(24px,7vw,32px);line-height:1.15;font-weight:700;letter-spacing:.01em}
+.hsub{margin:0;color:var(--muted);font-size:14px;max-width:40ch}
+.htip{border-left:3px solid var(--ink);padding:4px 0 4px 12px;display:grid;gap:2px}
+.htip span{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.htip p{margin:0;font-size:15px;line-height:1.45}
 .rings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .ring{appearance:none;border:0;background:none;color:var(--fg);display:grid;justify-items:center;gap:2px;padding:4px 0;cursor:pointer;min-width:0;text-align:center}
 .ring svg{width:min(84px,24vw);height:auto;margin-bottom:6px}
@@ -831,7 +837,11 @@ body{min-height:100%}
       <span class="todayTxt appdate"></span>
     </header>
     <div class="mainbody">
-      <div class="rings" id="rings"></div>
+      <div class="hero" id="hero">
+        <p class="hslogan">Сила тела. Спокойствие ума.</p>
+        <p class="hsub">Тренировки, калистеника и дыхание в одном приложении.</p>
+        <div class="htip"><span>Совет дня</span><p id="tipTxt"></p></div>
+      </div>
       <div class="evo" id="evo" role="img" aria-label="Эволюция: сутулый человечек шаг за шагом выпрямляется и набирает мышцы"></div>
       <div class="streak">
         <div class="shead"><h2>Серия</h2><span id="streakTxt"></span></div>
@@ -1591,7 +1601,10 @@ function ringSVG(frac,over,on){
     (o>0?`<circle cx="42" cy="42" r="${r}" class="rg-over" stroke-dasharray="${(c*o).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 42 42)"></circle>`:"")+
     (on?`<path d="M30 43 l8 8 l16 -18" class="rg-chk"></path>`:"")+`</svg>`;
 }
-function renderRings(){
+// совет дня: меняется раз в сутки
+var TIPS=["Записывай каждый подход. Без цифр нет прогресса.","Добавляй один повтор, а не десять килограммов.","Сон — половина тренировки. Ложись вовремя.","Белок в каждый приём пищи. Мышцы строятся на кухне.","Разминка — не трата времени. Это страховка суставов.","Техника важнее веса. Плохой повтор не считается.","Отдыхай между тяжёлыми подходами 2–3 минуты. Не спеши.","Пропустил тренировку — не пропускай вторую.","Дыши носом на отдыхе: пульс успокоится быстрее.","Прогресс видно через недели, а не через дни. Держи курс.","Пей воду до жажды, а не после.","Лучшая программа — та, которую ты выполняешь.","Сложный день — сделай лёгкую тренировку, но сделай.","Шесть недель на одних упражнениях — потом меняй вспомогательные.","Опускай вес медленно. Сила рождается в негативной фазе.","Перед тяжёлым подходом — один глубокий вдох и полный контроль.","Сравнивай себя только с собой прошлым.","Короткая тренировка лучше пропущенной.","Растяжка после тренировки — 5 минут, которые окупаются.","Спокойный ум держит вес лучше, чем злость.","Плохое настроение — повод потренироваться, а не отмазка.","Следи за серией: минимум одна тренировка в неделю.","Ешь достаточно: на голоде сила не растёт.","Стойка на руках начинается со стены. Не торопи этапы.","Вис на турнике каждый день — здоровые плечи и сильный хват.","Подтягивания растут от частоты. Делай понемногу, но часто.","Цель без плана — желание. Распиши неделю в плане тренировок.","Боль в суставе — стоп. Мышечная усталость — норма.","Записывай вес тела раз в неделю, в одно и то же утро.","Монах не спешит, но не останавливается."];
+function renderTip(){const el=document.getElementById("tipTxt");if(!el||!TIPS)return;const d=new Date(),n=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5);el.textContent=TIPS[n%TIPS.length]}
+function renderRings(){renderTip();if(!document.getElementById("rings"))return;
   const el=document.getElementById("rings");if(!el)return;
   const trained=allDocs.some(x=>x.date===TODAY&&x.done>0)||(wodDocs||[]).some(x=>x.date===TODAY);
   const kc=food.meals.reduce((a,m)=>a+(+m.kcal||0),0), wt=food.water.reduce((a,b)=>a+(+b||0),0);
@@ -1601,7 +1614,7 @@ function renderRings(){
     `<button type="button" class="ring" data-ring="food">${ringSVG(kf,kf>1?kf-1:0)}<b>${L(kc)}</b><span>из ${L(NT.kcal)} ккал</span></button>`+
     `<button type="button" class="ring" data-ring="water">${ringSVG(wf)}<b>${(wt/1000).toLocaleString("ru-RU",{maximumFractionDigits:2})} л</b><span>из ${(NT.water/1000).toLocaleString("ru-RU",{maximumFractionDigits:2})} л воды</span></button>`;
 }
-document.getElementById("rings").addEventListener("click",e=>{const b=e.target.closest("[data-ring]");if(!b)return;
+document.getElementById("rings")?.addEventListener("click",e=>{const b=e.target.closest("[data-ring]");if(!b)return;
   if(b.dataset.ring==="train"){if(cur)showScreen("work");else showPlaces()}else showNutrition()});
 function renderNext(){
   const nb=document.getElementById("nextBtn");if(!nb)return;
